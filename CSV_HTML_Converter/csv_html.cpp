@@ -1,24 +1,3 @@
-/*Input:
-column1,column2,column3
-a,123,abc123
-b,234,bcd234
-c,345,cde345
-*/
-
-/* Expected Output:
-<!DOCTYPE html>
-<html>
-	<body>
-		<table>
-			<tr><th>column1</th><th>column2</th><th>column3</th></tr>
-			<tr><td>a</td><td>123</td><td>abc123</td></tr>
-			<tr><td>b</td><td>234</td><td>bcd234</td></tr>
-			<tr><td>c</td><td>345</td><td>cde345</td></tr>
-		</table>
-	</body>
-</html>
-*/
-
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -36,32 +15,81 @@ class CSV_HTML {
 private:
 	ifstream inFile;
 	ofstream outFile;
-	string ifname = "C://Users//geeky//Desktop//test_small.csv";
+	string ifname = "C://Users//geeky//Desktop//test_enormous.csv";
 	string ofname = "C://Users//geeky//Desktop//output.html";
-	string_view preTag = "<!DOCTYPE html>\n<html>\n\t<body>\n\t\t<table>\n\t\t\th";
-	string_view postTag = "\t\t</table>\n\t</body>\n</html>\n";
-	string_view preRow = "<tr>";
-	string_view postRow = "</tr>";
-	string_view preHeading = "<th>";
-	string_view postHeading = "</tr>";
-	string_view preCell = "<td>";
-	string_view postCell = "</rd>";
-	vector <string> headings;
+	string preTag = "<!DOCTYPE html>\n<html>\n\t<body>\n\t\t<table>\n";
+	string postTag = "\t\t</table>\n\t</body>\n</html>\n";
+	string preRow = "\t\t\t<tr>";
+	string postRow = "</tr>";
+	string preHeading = "<th>";
+	string postHeading = "</th>";
+	string preCell = "<td>";
+	string postCell = "</rd>";
+	string line;
 	vector <string> rows;
 	unique_ptr<char[]> buffer;
 	string_view svBuffer;
 
-	void getHeadings();
+	void getcsvLine();
+	void getHeaders();
 	void getRows();
-	void getCSVLine();
 public:
 	void readFile();
 	void writeFile();
 	void processFile();
 };
 
-void getHeadings() {
+void CSV_HTML::getcsvLine() {
+	auto lineend = svBuffer.find("\n");
+	if (lineend == string_view::npos) {
+		line = static_cast<string>(svBuffer.substr(0, string_view::npos));
+		svBuffer = "";
+		return;
+	}
+	line = static_cast<string>(svBuffer.substr(0, lineend));
+	svBuffer.remove_prefix(lineend + 1);
+	return;
+}
 
+void CSV_HTML::getHeaders() {
+	size_t start = 0;
+	string row = preRow;
+	getcsvLine();
+	while (true) {
+		auto end = line.find(",", start);
+		if (end != string::npos) {
+			row += preHeading + line.substr(start, end - start) + postHeading;
+			start = end + 1;;
+		}
+		else {
+			row += preHeading + line.substr(start, end) + postHeading;
+			row += postRow;
+			rows.emplace_back(row);
+			return;
+		}
+			
+	}
+}
+
+void CSV_HTML::getRows() {
+	while (!svBuffer.empty()) {
+		string row = preRow;
+		size_t start = 0;
+		getcsvLine();
+		while (true) {
+			auto end = line.find(",", start);
+			if (end != string::npos) {
+				row += preCell + line.substr(start, end - start) + postCell;
+				start = end + 1;;
+			}
+			else {
+				row += preCell + line.substr(start, end) + postCell;
+				row += postRow;
+				rows.emplace_back(row);
+				break;
+			}
+		}
+	}
 	return;
 }
 
@@ -83,20 +111,25 @@ void CSV_HTML::readFile() {
 }
 
 void CSV_HTML::processFile() {
-
+	getHeaders();
+	getRows();
 	return;
 }
 
 void CSV_HTML::writeFile() {
 	outFile.open(ofname);
 	outFile.rdbuf()->pubsetbuf(write_buffer, SIZE);
-	outFile << preTag << '\n' << postTag;
+	outFile << preTag;
+	for (auto r : rows)
+		outFile << r << '\n';
+	outFile << postTag;
 	outFile.close();
 }
 
 int main() {
 	CSV_HTML converter;
 	converter.readFile();
+	converter.processFile();
 	converter.writeFile();
 	return 0;
 }
