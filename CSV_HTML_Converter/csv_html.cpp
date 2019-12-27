@@ -4,19 +4,21 @@
 #include <string_view>
 #include <memory>
 #include <vector>
+#include <chrono>
+#include <execution>
 
 using namespace std;
+using namespace std::chrono;
 
 #define SIZE 80000000
 char write_buffer[SIZE];
-
 
 class CSV_HTML {
 private:
 	ifstream inFile;
 	ofstream outFile;
-	string ifname = "C://Users//geeky//Desktop//test_enormous.csv";
-	string ofname = "C://Users//geeky//Desktop//output.html";
+	string ifname;
+	string ofname;
 	string preTag = "<!DOCTYPE html>\n<html>\n\t<body>\n\t\t<table>\n";
 	string postTag = "\t\t</table>\n\t</body>\n</html>\n";
 	string preRow = "\t\t\t<tr>";
@@ -34,10 +36,12 @@ private:
 	void getHeaders();
 	void getRows();
 public:
+	CSV_HTML(string ifname, string ofname) : ifname(ifname), ofname(ofname) {};
 	void readFile();
 	void writeFile();
 	void processFile();
 };
+
 
 void CSV_HTML::getcsvLine() {
 	auto lineend = svBuffer.find("\n");
@@ -67,7 +71,7 @@ void CSV_HTML::getHeaders() {
 			rows.emplace_back(row);
 			return;
 		}
-			
+
 	}
 }
 
@@ -126,10 +130,35 @@ void CSV_HTML::writeFile() {
 	outFile.close();
 }
 
-int main() {
-	CSV_HTML converter;
-	converter.readFile();
-	converter.processFile();
-	converter.writeFile();
+template <typename func>
+milliseconds TimeMe(func f) {
+	time_point<system_clock> start, end;
+	start = system_clock::now();
+	f();
+	end = system_clock::now();
+	return duration_cast<milliseconds> (end - start);
+}
+
+int main(int argc, char* argv[]) {
+	if (argc == 3) {
+		string inf = argv[1];
+		string outf = argv[2];
+		CSV_HTML converter(inf, outf);
+		milliseconds m;
+		m = TimeMe([&converter]() {converter.readFile(); });
+		cout << "Read File Execution Time: " << m.count() << " milliseconds" << endl;
+
+		m = TimeMe([&converter]() {converter.processFile(); });
+		cout << "Process File Execution Time: " << m.count() << " milliseconds" << endl;
+
+		m = TimeMe([&converter]() {converter.writeFile(); });
+		cout << "Write File Execution Time: " << m.count() << " milliseconds" << endl;
+	}
+
+	else {
+		cout << "Incorrect Use! " << endl;
+		cout << "Usage: " << "infilePath outfilePath" << endl;
+		return -1;
+	}
 	return 0;
 }
